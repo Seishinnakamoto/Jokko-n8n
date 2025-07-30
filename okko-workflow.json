@@ -1,0 +1,83 @@
+{
+  "name": "JOKKO - Webhook + Groq + LibreTranslate",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "jokko",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://libretranslate.com/translate",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "{\n  \"q\": \"{{$json[\"testo\"]}}\",\n  \"source\": \"auto\",\n  \"target\": \"it\",\n  \"format\": \"text\"\n}"
+      },
+      "id": "2",
+      "name": "Translate to Italian (Libre)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "headersJson": "{\n  \"Authorization\": \"Bearer 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\",\n  \"Content-Type\": \"application/json\"\n}",
+        "bodyParametersJson": "{\n  \"model\": \"mixtral-8x7b-32768\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are JOKKO, a kind multilingual assistant who helps migrants in Italy understand laws, procedures and live better.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{$json[\"translatedText\"]}}\"\n    }\n  ]\n}"
+      },
+      "id": "3",
+      "name": "Ask Groq",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://libretranslate.com/translate",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "{\n  \"q\": \"{{$json[\"choices\"][0][\"message\"][\"content\"]}}\",\n  \"source\": \"it\",\n  \"target\": \"{{$node[\\\"Webhook Trigger\\\"].json[\"lingua\"]}}\",\n  \"format\": \"text\"\n}"
+      },
+      "id": "4",
+      "name": "Translate Back (Libre)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "responseMode": "lastNode"
+      },
+      "id": "5",
+      "name": "Return to User",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{ "node": "Translate to Italian (Libre)", "type": "main", "index": 0 }]]
+    },
+    "Translate to Italian (Libre)": {
+      "main": [[{ "node": "Ask Groq", "type": "main", "index": 0 }]]
+    },
+    "Ask Groq": {
+      "main": [[{ "node": "Translate Back (Libre)", "type": "main", "index": 0 }]]
+    },
+    "Translate Back (Libre)": {
+      "main": [[{ "node": "Return to User", "type": "main", "index": 0 }]]
+    }
+  }
+}
